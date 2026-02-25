@@ -4,6 +4,8 @@ import { z } from 'zod';
 import postgres from 'postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
@@ -18,7 +20,6 @@ const FormSchema = z.object({
     }),
     date: z.string(),
 });
-
 
 
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
@@ -102,6 +103,23 @@ async function updateInvoice(id: string, prevState: State, formData: FormData) {
     redirect('/dashboard/invoices');
 }
 
+async function authenticate(prevState: string | undefined, formData: FormData) {
+    try {
+        await signIn('credentials', formData);
+    } catch (error) {
+        if (error instanceof AuthError) {
+            switch (error.type) {
+                case 'CredentialsSignin':
+                    return 'Invalid credentials.';
+                default:
+                    return 'Something went wrong.';
+            }
+        }
+        throw error;
+    }
+}
+
+
 async function deleteInvoice(id: string) {
     throw new Error('failed to deleter invoice');
 
@@ -117,4 +135,4 @@ async function deleteInvoice(id: string) {
     }
 }
 
-export { createInvoice, updateInvoice, deleteInvoice };
+export { authenticate, createInvoice, updateInvoice, deleteInvoice };
